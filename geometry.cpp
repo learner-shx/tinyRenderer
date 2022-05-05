@@ -129,7 +129,7 @@ Matrix Matrix::inverse()
     for(int i = 0; i < rows; i++)
         ans[i][i + cols] = 1;
     
-    std::cout<<ans;
+    // std::cout<<ans;
     // up triangulation
     //beacuse transform ith col step need i + 1, so rows - 1
     for(int i = 0; i< rows - 1; i++)
@@ -147,10 +147,9 @@ Matrix Matrix::inverse()
         for(int j = cols * 2 - 1; j >= 0; j--)
         {
             ans[i][j] /= ans[i][i];
-            std::cout<<ans[i][i]<<std::endl;
+            // std::cout<<ans[i][i]<<std::endl;
         }
-        std::cout<<ans;
-        std::cout<<std::endl;
+
         //transform ith col into 0
         for(int k = i + 1; k < rows; k++)
         {
@@ -164,7 +163,7 @@ Matrix Matrix::inverse()
     for(int j = ans.cols - 1; j >= rows - 1; j--)
         ans[rows - 1][j] /= ans[rows - 1][rows - 1];
     
-    std::cout<<ans;
+
     //down triangulation
     for(int i = rows - 1; i >= 0; i--)
     {
@@ -175,7 +174,7 @@ Matrix Matrix::inverse()
                 ans[k][j] -= ans[i][j] * coeff;
         }
     }
-    std::cout<<ans;
+
     //cut identity matrix
     Matrix result(rows, cols);
     for(int i = 0; i < rows; i++)

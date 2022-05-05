@@ -3,19 +3,16 @@
 #include "geometry.h"
 #include <graphics.h>
 
+#include "shader.h"
+
 #define WHITE = EGERGBA(255, 255, 255, 255);
 #define RED   = EGERGBA(255, 0,   0,   255);
 #define GREEN = EGERGBA(0,   255, 0,   255);
 #define BLUE  = EGERGBA(0  , 0, 255,   255);
 
-extern float fov; // 60'
 
-
-extern Vec4f MVP(	Vec3f position,
-            		Vec3f translate,Vec3f rotate,   Vec3f scale,
-            		Vec3f pos,      Vec3f up,       Vec3f dir,
-            		Vec4f rtnf);
-
+int Height = 1080;
+int Length = 1920;
 
 
 
@@ -218,6 +215,104 @@ void triangle(Vec3f A, Vec3f B, Vec3f C, double** zbuffer, TGAImage &image, TGAC
 					zbuffer[y][x] = P_z;
 					image.set(x, y, color);
 				}
+		}
+	}
+	// line(A.x, A.y, B.x, B.y, image, white);
+	// line(B.x, B.y, C.x, C.y, image, white);
+	// line(C.x, C.y, A.x, A.y, image, white);
+}
+  
+Vec3f bicentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P)
+{
+	Vec3f uv1 = Vec3f((B-A).x, (C-A).x, (A-P).x).crossProduct(
+				Vec3f((B-A).y, (C-A).y, (A-P).y)); 
+	
+	if(std::abs(uv1.z) >= 1e-6)
+		uv1 = uv1 * (1/uv1.z);
+	// std::cout << P;	
+	return uv1;        // orthogonal
+}
+
+double bicentricInterplotion(Vec3f uv1, double a, double b, double c)
+{
+	double ans = uv1.x * b + uv1.y * c + (1 - uv1.x - uv1.y) * a;
+	return ans;
+}
+
+Vec2f bicentricInterplotion(Vec3f uv1, Vec2f A, Vec2f B, Vec2f C)
+{	
+	Vec2f ans;
+	for(int i = 0; i < 2; i++)
+		ans.raw[i] = uv1.x * B.raw[i] + uv1.y * C.raw[i]+ (1 - uv1.x - uv1.y) * A.raw[i];
+	return ans;
+}
+
+Vec3f bicentricInterplotion(Vec3f uv1, Vec3f A, Vec3f B, Vec3f C)
+{	
+	Vec3f ans;
+	for(int i = 0; i < 3; i++)
+		ans.raw[i] = uv1.x * B.raw[i] + uv1.y * C.raw[i]+ (1 - uv1.x - uv1.y) * A.raw[i];
+	return ans;
+}
+
+Vec4i bicentricInterplotion(Vec3f uv1, Vec4i A, Vec4i B, Vec4i C)
+{	
+	Vec4i ans;
+	for(int i = 0; i < 4; i++)
+		ans.raw[i] = uv1.x * B.raw[i] + uv1.y * C.raw[i]+ (1 - uv1.x - uv1.y) * A.raw[i];
+	return ans;
+}
+
+void triangle(v2f* it, Shader &shader, double** zbuffer, TGAImage &image)
+{
+	Vec3f A = it[0].pos;
+	Vec3f B = it[1].pos;
+	Vec3f C = it[2].pos;
+	// std::cout<<"start draw a triangle \n" << A << B << C;
+
+	double bboxminx = std::fmin(A.x, std::fmin(B.x, C.x));
+	double bboxminy = std::fmin(A.y, std::fmin(B.y, C.y));
+	double bboxmaxx = std::fmax(A.x, std::fmax(B.x, C.x));
+	double bboxmaxy = std::fmax(A.y, std::fmax(B.y, C.y));
+
+	for(double x = bboxminx; x <= bboxmaxx; x+=0.0005)
+	{
+		for(double y = bboxminy; y <= bboxmaxy; y+=0.0011)
+		{
+			Vec3f P = Vec3f(x, y, 0.0);
+
+			// u*B + v*C + (1 - u - v) * A
+
+			Vec3f uv1 = bicentric(A, B, C, P);
+			// std::cout << uv1;
+	
+			double P_z = bicentricInterplotion(uv1, A.z, B.z, C.z);
+
+			if(uv1.x>=-0.0 && uv1.y>=-0.0 && uv1.x+uv1.y <= 1.0)
+			{
+				// std::cout<<"yes";
+				v2f i;
+				i.pos = Vec3f(x, y, P_z);
+				i.worldPos = bicentricInterplotion(uv1, it[0].worldPos, it[1].worldPos, it[2].worldPos);
+				i.worldNormal = bicentricInterplotion(uv1, it[0].worldNormal, it[1].worldNormal, it[2].worldNormal);
+				i.uv = bicentricInterplotion(uv1, it[0].uv, it[1].uv, it[2].uv);
+				// std::cout << it[0].uv<< it[1].uv<< it[2].uv << i.uv << std::endl;
+				int scr_x, scr_y;
+				scr_x = (x + 1) / 2 * Length;
+				scr_y = (y + 1) / 2 * Height;
+				// std::cout<<scr_x<<" "<<scr_y;
+				if(scr_x >= 1920 || scr_y >= 1080||scr_x<0||scr_y<0) continue;
+				if(zbuffer[scr_y][scr_x] <= P_z)
+				{
+					// std::cout<<"still still yes";
+					// printf("zxy = %f", zbuffer[y][x]);
+					// std::cout<<"try to call fragment sahder\n";
+					TGAColor color = shader.fragment(i);
+					zbuffer[scr_y][scr_x] = P_z;
+					// std::cout<<"shader"<<scr_x<<" "<<scr_y<<std::endl;
+					image.set(scr_x, scr_y, color);
+				}
+			}
 		}
 	}
 	// line(A.x, A.y, B.x, B.y, image, white);
