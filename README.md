@@ -19,7 +19,7 @@
 
 则可在图片目录下生成渲染图片output.tga
 
-![image](https://github.com/learner-shx/tinyRenderer/tree/master/output.tga)
+![image](https://github.com/learner-shx/tinyRenderer/tree/master/output.png)
 
 【由于仅作学习娱乐用途，并未考虑方便用户使用，或许以后会再改改。
 
